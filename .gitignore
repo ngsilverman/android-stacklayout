@@ -12,6 +12,11 @@
 bin/
 gen/
 
+# Eclipse
+.project
+.classpath
+.settings
+
 # Gradle files
 .gradle/
 build/
