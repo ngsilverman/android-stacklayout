@@ -7,10 +7,10 @@ import android.util.AttributeSet;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.OverScroller;
 
-public class StackLayout extends ViewGroup {
+public class StackLayout extends FrameLayout {
 
     // TODO  Factor in the screen density
     private static final int SCROLL_THRESHOLD = 30;
