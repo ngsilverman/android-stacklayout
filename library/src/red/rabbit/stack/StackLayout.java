@@ -15,6 +15,9 @@ public class StackLayout extends FrameLayout {
     // TODO  Factor in the screen density
     private static final int SCROLL_THRESHOLD = 30;
 
+    // TODO  Factor in the screen density
+    private static final int SWEEP_THRESHOLD = 200;
+
     /**
      * Duration of the spring back to the default position when the top child
      * is released.
@@ -32,6 +35,9 @@ public class StackLayout extends FrameLayout {
 
     /** Used to handle flings and spring backs. */
     private OverScroller mScroller;
+
+    /** Whether or not the user is currently touching the screen */
+    private boolean mIsTouching;
 
     /** Whether or not the top child is locked in a horizontal scroll */
     private boolean mIsScrollingHorizontally;
@@ -90,6 +96,8 @@ public class StackLayout extends FrameLayout {
         mGestureDetector.onTouchEvent(event);
 
         if (event.getAction() == MotionEvent.ACTION_UP) {
+            mIsTouching = false;
+
             if (!mScroller.computeScrollOffset()) {
                 springBack();
                 layoutTopChild();
@@ -103,6 +111,8 @@ public class StackLayout extends FrameLayout {
 
         @Override
         public boolean onDown(MotionEvent e) {
+            mIsTouching = true;
+
             mScroller.forceFinished(true);
 
             layoutTopChild();
@@ -162,8 +172,7 @@ public class StackLayout extends FrameLayout {
      *          coordinates should trigger a sweep-away.
      */
     private boolean isSweptAway(int left, int top) {
-        // TODO  Threshold so it's not necessary to swipe or fling all the way.
-        return Math.abs(left) >= getWidth() || Math.abs(top) >= getHeight();
+        return Math.abs(left) >= getWidth() - SWEEP_THRESHOLD || Math.abs(top) >= getHeight() - SWEEP_THRESHOLD;
     }
 
     /**
@@ -233,16 +242,19 @@ public class StackLayout extends FrameLayout {
                 topChild.layout(mLeft, mTop, mRight, mBottom);
             }
 
-            /*
-             * TODO  Swipe away threshold so it's not necessary to swipe or fling
-             *       all the way.
-             */
-            if (isSweptAway(mChildLeft, mChildTop)) {
+            if (!mIsTouching && isSweptAway(mChildLeft, mChildTop)) {
+                /*
+                 * TODO  If swept away but still visible animate to the nearest
+                 *       edge.
+                 */
+
                 removeView(topChild);
 
                 if (mInfinite) {
                     addView(topChild, 0);
                 }
+
+                mScroller.forceFinished(true);
 
                 mChildLeft = 0;
                 mChildTop = 0;
