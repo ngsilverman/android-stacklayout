@@ -15,14 +15,18 @@ public class StackLayout extends FrameLayout {
     // TODO  Factor in the screen density
     private static final int SCROLL_THRESHOLD = 30;
 
-    // TODO  Factor in the screen density
-    private static final int SWEEP_THRESHOLD = 200;
+    /**
+     * This value is relative to the width of the screen. If the top child
+     * travels further than that proportion of the screen it should be swept
+     * away.
+     */
+    private static final float SWEEP_THRESHOLD = .4f;
 
     /**
      * Duration of the spring back to the default position when the top child
      * is released.
      */
-    private static final int SPRINGBACK_DURATION = 200;
+    private static final int SPRING_DURATION = 200;
 
     /** 
      * If set to true swept views will be added back to the bottom of the
@@ -99,7 +103,7 @@ public class StackLayout extends FrameLayout {
             mIsTouching = false;
 
             if (!mScroller.computeScrollOffset()) {
-                springBack();
+                triggerSpring(mChildLeft, mChildTop);
                 layoutTopChild();
             }
         }
@@ -156,11 +160,19 @@ public class StackLayout extends FrameLayout {
                 -getWidth(), getWidth(), -getHeight(), getHeight(),
                 0, 0);
 
-        /*
-         * The fling is insufficient to swipe away the top child so spring back
-         * to the default position immediately instead.
-         */
-        if (!isSweptAway(mScroller.getFinalX(), mScroller.getFinalY())) {
+        triggerSpring(mScroller.getFinalX(), mScroller.getFinalY());
+    }
+
+    /**
+     * @param left  Left position of the top child, relative to its parent.
+     * @param top  Top position of the top child, relative to its parent.
+     * @return  Given the position of the top child, will either spring it back
+     *          to its default position or sweep it away.
+     */
+    private void triggerSpring(int left, int top) {
+        if (triggerSweepAway(left, top)) {
+            springForward();
+        } else {
             springBack();
         }
     }
@@ -171,8 +183,33 @@ public class StackLayout extends FrameLayout {
      * @return  Whether or not the top child being positioned at these
      *          coordinates should trigger a sweep-away.
      */
+    private boolean triggerSweepAway(int left, int top) {
+        return Math.abs(left) >= getWidth() * SWEEP_THRESHOLD || Math.abs(top) >= getHeight() * SWEEP_THRESHOLD;
+    }
+
+    /**
+     * @param left  Left position of the top child, relative to its parent.
+     * @param top  Top position of the top child, relative to its parent.
+     * @return  Whether or not the top child being positioned at these
+     *          coordinates is completely swept-away.
+     */
     private boolean isSweptAway(int left, int top) {
-        return Math.abs(left) >= getWidth() - SWEEP_THRESHOLD || Math.abs(top) >= getHeight() - SWEEP_THRESHOLD;
+        return Math.abs(left) >= getWidth() || Math.abs(top) >= getHeight();
+    }
+
+    /**
+     * Initiates a spring to the final swept-away position the of top child. Be
+     * sure to call {@link #layoutTopChild} following this method to start the
+     * spring.
+     */
+    private void springForward() {
+        mScroller.forceFinished(true);
+        mScroller.startScroll(
+                mChildLeft,
+                mChildTop,
+                mChildLeft > 0 ? getWidth() - mChildLeft : - getWidth() - mChildLeft,
+                mChildTop > 0 ? getHeight() - mChildTop : - getHeight() - mChildTop,
+                SPRING_DURATION);
     }
 
     /**
@@ -182,7 +219,7 @@ public class StackLayout extends FrameLayout {
      */
     private void springBack() {
         mScroller.forceFinished(true);
-        mScroller.startScroll(mChildLeft, mChildTop, -mChildLeft, -mChildTop, SPRINGBACK_DURATION);
+        mScroller.startScroll(mChildLeft, mChildTop, -mChildLeft, -mChildTop, SPRING_DURATION);
     }
 
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
@@ -243,11 +280,6 @@ public class StackLayout extends FrameLayout {
             }
 
             if (!mIsTouching && isSweptAway(mChildLeft, mChildTop)) {
-                /*
-                 * TODO  If swept away but still visible animate to the nearest
-                 *       edge.
-                 */
-
                 removeView(topChild);
 
                 if (mInfinite) {
