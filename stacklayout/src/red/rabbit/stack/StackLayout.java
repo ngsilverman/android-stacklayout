@@ -44,7 +44,7 @@ public class StackLayout extends FrameLayout {
     /** Used to handle flings and spring backs. */
     private OverScroller mScroller;
 
-    /** Whether or not the user is currently touching the screen */
+    /** Whether or not the user is currently touching the screen. */
     private boolean mIsTouching;
 
     /**
