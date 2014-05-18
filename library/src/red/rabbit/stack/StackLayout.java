@@ -12,7 +12,11 @@ import android.widget.OverScroller;
 
 public class StackLayout extends FrameLayout {
 
-    // TODO  Factor in the screen density
+    /*
+     * TODO  Factor in the screen density
+     * TODO  Reduce if scroll threshold overlaps sweep threshold
+     *       (ex. if view is very small)
+     */
     private static final int SCROLL_THRESHOLD = 30;
 
     /**
@@ -43,10 +47,16 @@ public class StackLayout extends FrameLayout {
     /** Whether or not the user is currently touching the screen */
     private boolean mIsTouching;
 
-    /** Whether or not the top child is locked in a horizontal scroll */
+    /**
+     * Whether or not the top child is currently hovering in a position that
+     * can trigger a sweep.
+     */
+    private boolean mIsHovering;
+
+    /** Whether or not the top child is locked in a horizontal scroll. */
     private boolean mIsScrollingHorizontally;
 
-    /** Whether or not the top child is locked in a vertical scroll */
+    /** Whether or not the top child is locked in a vertical scroll. */
     private boolean mIsScrollingVertically;
 
     /** Left position of the top child, relative to this view. */
@@ -66,6 +76,9 @@ public class StackLayout extends FrameLayout {
 
     /** Top position of this view, relative to its parent. */
     private int mTop;
+
+    /** If set, swipe and hover events will be sent to this listener. */
+    private StackListener mListener;
 
     public StackLayout(Context context) {
         super(context);
@@ -95,17 +108,22 @@ public class StackLayout extends FrameLayout {
         }
     }
 
+    /** Register callbacks to be invoked when swipes and hovers occur. */
+    public void setListener(StackListener listener) {
+        mListener = listener;
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         mGestureDetector.onTouchEvent(event);
 
         if (event.getAction() == MotionEvent.ACTION_UP) {
-            mIsTouching = false;
-
             if (!mScroller.computeScrollOffset()) {
                 triggerSpring(mChildLeft, mChildTop);
                 layoutTopChild();
             }
+
+            mIsTouching = false;
         }
 
         return true;
@@ -170,7 +188,7 @@ public class StackLayout extends FrameLayout {
      *          to its default position or sweep it away.
      */
     private void triggerSpring(int left, int top) {
-        if (triggerSweepAway(left, top)) {
+        if (isOverSweepThreshold(left, top)) {
             springForward();
         } else {
             springBack();
@@ -183,7 +201,7 @@ public class StackLayout extends FrameLayout {
      * @return  Whether or not the top child being positioned at these
      *          coordinates should trigger a sweep-away.
      */
-    private boolean triggerSweepAway(int left, int top) {
+    private boolean isOverSweepThreshold(int left, int top) {
         return Math.abs(left) >= getWidth() * SWEEP_THRESHOLD || Math.abs(top) >= getHeight() * SWEEP_THRESHOLD;
     }
 
@@ -280,6 +298,8 @@ public class StackLayout extends FrameLayout {
             }
 
             if (!mIsTouching && isSweptAway(mChildLeft, mChildTop)) {
+                onSweptAway();
+
                 removeView(topChild);
 
                 if (mInfinite) {
@@ -290,7 +310,46 @@ public class StackLayout extends FrameLayout {
 
                 mChildLeft = 0;
                 mChildTop = 0;
+            } else {
+                if (isOverSweepThreshold(mChildLeft, mChildTop)) {
+                    onHover();
+                } else {
+                    onNotHover();
+                }
             }
+        }
+    }
+
+    private void onNotHover() {
+        if (mIsHovering) {
+            mIsHovering = false;
+            if (mListener != null) mListener.onCancel();
+        }
+    }
+
+    private void onHover() {
+        if (!mIsHovering) {
+            mIsHovering = true;
+
+            if (mListener != null) {
+                if (mIsScrollingHorizontally) {
+                    if (mChildLeft > 0) mListener.onHoverLeft();
+                    else mListener.onHoverRight();
+                } else if (mChildTop > 0) mListener.onHoverTop();
+                else mListener.onHoverBottom();
+            }
+        }
+    }
+
+    private void onSweptAway() {
+        mIsHovering = false;
+
+        if (mListener != null) {
+            if (mIsScrollingHorizontally) {
+                if (mChildLeft > 0) mListener.onSweepLeft();
+                else mListener.onSweepRight();
+            } else if (mChildTop > 0) mListener.onSweepTop();
+            else mListener.onSweepBottom();
         }
     }
 }
