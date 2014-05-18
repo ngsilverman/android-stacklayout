@@ -1,6 +1,6 @@
 # Android StackLayout
 
-Custom ViewGroup of which the top element can be swept away. It's worth noting the library currently lacks support for a lot of practical features (See TODOs) and isn't much more than a proof of concept at this point.
+Custom ViewGroup of which the top element can be swept away in all directions.
 
 ## Attributes
 
@@ -11,10 +11,16 @@ infinite    | boolean    |  If true swept views will be added back to the bottom
 To use these attributes the following attribute must also be set on the root element of the XML layout:
 `xmlns:custom="http://schemas.android.com/apk/res-auto"`
 
+## Public Methods
+
+Returns | Method                                   | Description
+--------|------------------------------------------|-------------
+void    | setListener(StaskListener&nbsp;listener) | Register callbacks to be invoked when swipes and hovers occur.
+
+
 ## TODOs
 
 * Adapter support
-* Event listener (for all swipe directions)
 
 ## Example
 
