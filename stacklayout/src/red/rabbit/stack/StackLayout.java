@@ -3,10 +3,12 @@ package red.rabbit.stack;
 
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.database.DataSetObserver;
 import android.util.AttributeSet;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Adapter;
 import android.widget.FrameLayout;
 import android.widget.OverScroller;
 
@@ -45,19 +47,19 @@ public class StackLayout extends FrameLayout {
     private OverScroller mScroller;
 
     /** Whether or not the user is currently touching the screen. */
-    private boolean mIsTouching;
+    private boolean mIsTouching = false;
 
     /**
      * Whether or not the top child is currently hovering in a position that
      * can trigger a sweep.
      */
-    private boolean mIsHovering;
+    private boolean mIsHovering = false;
 
     /** Whether or not the top child is locked in a horizontal scroll. */
-    private boolean mIsScrollingHorizontally;
+    private boolean mIsScrollingHorizontally = false;
 
     /** Whether or not the top child is locked in a vertical scroll. */
-    private boolean mIsScrollingVertically;
+    private boolean mIsScrollingVertically = false;
 
     /** Left position of the top child, relative to this view. */
     private int mChildLeft;
@@ -76,6 +78,12 @@ public class StackLayout extends FrameLayout {
 
     /** Top position of this view, relative to its parent. */
     private int mTop;
+
+    /** Optional adapter that provides the data for this Stack. */
+    private Adapter mAdapter;
+
+    /** Last item position loaded from the Adapter. */
+    private int mLastLoadedPosition;
 
     /** If set, swipe and hover events will be sent to this listener. */
     private StackListener mListener;
@@ -106,6 +114,49 @@ public class StackLayout extends FrameLayout {
                 a.recycle();
             }
         }
+    }
+
+    /** Sets the Adapter used to provide the data which backs this Stack. */
+    public void setAdapter(Adapter adapter) {
+        if (mAdapter != null) {
+            mAdapter.unregisterDataSetObserver(mDataSetObserver);
+        }
+
+        mAdapter = adapter;
+        mAdapter.registerDataSetObserver(mDataSetObserver);
+
+        invalidate();
+    }
+
+    private DataSetObserver mDataSetObserver = new DataSetObserver() {
+
+        @Override
+        public void onChanged() {
+            invalidate();
+        }
+
+        @Override
+        public void onInvalidated() {
+            invalidate();
+        }
+    };
+
+    @Override
+    public void invalidate() {
+        if (mAdapter != null) {
+            final View convertView = getChildAt(0);
+            removeAllViews();
+
+            final int adapterCount = mAdapter.getCount();
+            if (adapterCount > 0) {
+                mLastLoadedPosition = 0;
+
+                addView(mAdapter.getView(mLastLoadedPosition, convertView, this));
+                if (adapterCount > 1) addView(mAdapter.getView(++mLastLoadedPosition, convertView, this), 0);
+            }
+        }
+
+        super.invalidate();
     }
 
     /** Register callbacks to be invoked when swipes and hovers occur. */
@@ -302,7 +353,17 @@ public class StackLayout extends FrameLayout {
 
                 removeView(topChild);
 
-                if (mInfinite) {
+                if (mAdapter != null) {
+                    final int adapterCount = mAdapter.getCount();
+
+                    int nextPosition = mLastLoadedPosition + 1;
+                    if (mInfinite) nextPosition %= adapterCount;
+
+                    if (nextPosition < adapterCount) {
+                        addView(mAdapter.getView(nextPosition, topChild, this), 0);
+                        mLastLoadedPosition = nextPosition;
+                    }
+                } else if (mInfinite) {
                     addView(topChild, 0);
                 }
 
