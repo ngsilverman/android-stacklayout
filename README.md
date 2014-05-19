@@ -15,12 +15,8 @@ To use these attributes the following attribute must also be set on the root ele
 
 Returns | Method                                   | Description
 --------|------------------------------------------|-------------
+void    | setAdapter(Adapter&nbsp;adapter)         | Sets the Adapter used to provide the data which backs this Stack.
 void    | setListener(StaskListener&nbsp;listener) | Register callbacks to be invoked when swipes and hovers occur.
-
-
-## TODOs
-
-* Adapter support
 
 ## Example
 
